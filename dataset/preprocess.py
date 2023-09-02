@@ -1,16 +1,18 @@
 import pandas as pd
 from ase.io import read
 from sklearn.model_selection import train_test_split
+import numpy as np
 
 
 class Preprocess:
     def __init__(self, config):
         self.config = config
         self.cfg_data = config["data"]
-        self.sequence_train = None
-        self.sequence_test = None
+        self.sequence_train = []
+        self.sequence_test = []
 
     def load_train_data(self):
+        print("..load train data.. (1/3)")
         train = read(
             f"{self.cfg_data['data_dir']}/train.xyz", format="extxyz", index=":"
         )
@@ -25,6 +27,7 @@ class Preprocess:
         return submit
 
     def preprocessing_force(self, data, is_train=True) -> pd.DataFrame:
+        print("..xyz data to df.. (2/3)")
         (
             sequence_data,
             positions_x,
@@ -45,9 +48,9 @@ class Preprocess:
                 positions_y.append(position[j][1])
                 positions_z.append(position[j][2])
                 forces.append(force[j])
-        if is_train:  # train
+        if is_train:
             self.sequence_train = sequence_data
-        else:  # test
+        else:
             self.sequence_test = sequence_data
             forces = None
         df = pd.DataFrame(
@@ -61,11 +64,32 @@ class Preprocess:
         return df
 
     def train_valid_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
+        print("..split train and valid.. (3/3)")
         x = df.drop(columns=["force"])
         y = df["force"]
         x_train, x_valid, y_train, y_valid = train_test_split(
-            x, y, random_state=self.config["seed"]
+            x, y, test_size=0.2, random_state=self.config["seed"]
         )
-        train_df = pd.DataFrame(data={"X": x_train.values.tolist(), "y": y_train})
-        valid_df = pd.DataFrame(data={"X": x_valid.values.tolist(), "y": y_valid})
-        return train_df, valid_df
+        x_train["force"] = y_train
+        x_valid["force"] = y_valid
+        return x_train, x_valid
+
+    def infenrence_preprocessing_force(self, preds):
+        bundles_test = []
+        train = self.load_train_data()
+        for i in range(len(train)):
+            mole = train[i]
+            atoms = len(mole)
+            self.sequence_train.append(atoms)
+        flag = 0
+        for size in self.sequence_test:
+            bundles_test.append((flag, flag + size))
+            flag += size
+
+        preds_force = []
+        for start, end in bundles_test:  # 시작과 끝. 예를 들어 train[0]은 시작 0번부터 끝 47번일 것
+            preds_force.append(np.vstack(preds[start:end]))  # 2차원 array로 저장
+
+        sample = self.load_submission_data()
+        sample["force"] = preds_force
+        return sample

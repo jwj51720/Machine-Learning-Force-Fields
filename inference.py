@@ -14,7 +14,9 @@ def main(config):
     print(f'inference for {config["inference"]["pt_file"]}.pt')
     print("=======================start inference======================")
     preprocessor = Preprocess(config)
+    print("(1/3) ..load test data..")
     test_data = preprocessor.load_test_data()
+    print("(2/3) ..xyz data to df..")
     test_df = preprocessor.preprocessing_force(test_data, is_train=False)
     temp_dir = config["data"]["temp_dir"]
     if not os.path.exists(temp_dir):

@@ -1,3 +1,14 @@
 {
-    "seed":917
+    "seed":917,
+    "data": {
+        "data_dir": "./data/"
+    },
+    "force":{
+        "input_size": 3,
+        "output_size": 3,
+        "hidden_size": 256,
+        "learning_rate": 0.001,
+        "epochs": 3,
+        "batch": 256
+    }
 }

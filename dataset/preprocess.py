@@ -12,14 +12,12 @@ class Preprocess:
         self.sequence_test = []
 
     def load_train_data(self):
-        print("(1/3) ..load train data..")
         train = read(
             f"{self.cfg_data['data_dir']}/train.xyz", format="extxyz", index=":"
         )
         return train
 
     def load_test_data(self):
-        print("(1/3) ..load test data..")
         test = read(f"{self.cfg_data['data_dir']}/test.xyz", format="extxyz", index=":")
         return test
 
@@ -27,8 +25,7 @@ class Preprocess:
         submit = pd.read_csv(f"{self.cfg_data['data_dir']}/sample_submission.csv")
         return submit
 
-    def preprocessing_force(self, data, is_train=True) -> pd.DataFrame:
-        print("(2/3) ..xyz data to df..")
+    def data2df(self, data, is_train=True) -> pd.DataFrame:
         (
             sequence_data,
             positions_x,
@@ -65,7 +62,6 @@ class Preprocess:
         return df
 
     def train_valid_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
-        print("(3/3) ..split train and valid..")
         x = df.drop(columns=["force"])
         y = df["force"]
         x_train, x_valid, y_train, y_valid = train_test_split(
@@ -76,17 +72,7 @@ class Preprocess:
         return x_train, x_valid
 
     def infenrence_preprocessing_force(self, preds):
-        bundles_test = []
-        # train = self.load_train_data()
-        # for i in range(len(train)):
-        #     mole = train[i]
-        #     atoms = len(mole)
-        #     self.sequence_train.append(atoms)
-        flag = 0
-        for size in self.sequence_test:
-            bundles_test.append((flag, flag + size))
-            flag += size
-
+        bundles_test = self.take_bundles_test()
         preds_force = []
         for start, end in bundles_test:  # 시작과 끝. 예를 들어 train[0]은 시작 0번부터 끝 47번일 것
             preds_force.append(np.vstack(preds[start:end]))  # 2차원 array로 저장
@@ -94,3 +80,33 @@ class Preprocess:
         sample = self.load_submission_data()
         sample["force"] = preds_force
         return sample
+
+    def take_bundles_train(self):
+        bundles_train = []
+        flag = 0
+        if not self.sequence_train:
+            train = self.load_train_data()
+            for i in range(len(train)):
+                mole = train[i]
+                atoms = len(mole)
+                self.sequence_train.append(atoms)
+
+        for size in self.sequence_train:
+            bundles_train.append((flag, flag + size))
+            flag += size
+        return bundles_train
+
+    def take_bundles_test(self):
+        bundles_test = []
+        flag = 0
+        if not self.sequence_test:
+            test = self.load_test_data()
+            for i in range(len(test)):
+                mole = test[i]
+                atoms = len(mole)
+                self.sequence_test.append(atoms)
+
+        for size in self.sequence_test:
+            bundles_test.append((flag, flag + size))
+            flag += size
+        return bundles_test

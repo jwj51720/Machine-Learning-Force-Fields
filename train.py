@@ -9,11 +9,14 @@ from datetime import datetime
 import pytz
 
 
-def main(config):
+def force(config):
     print("=====================start preprocessing====================")
     preprocessor = Preprocess(config)
+    print("(1/3) ..load train data..")
     train_data = preprocessor.load_train_data()
-    train_df = preprocessor.preprocessing_force(train_data, is_train=True)
+    print("(2/3) ..xyz data to df..")
+    train_df = preprocessor.data2df(train_data, is_train=True)
+    print("(3/3) ..split train and valid..")
     train_df, valid_df = preprocessor.train_valid_split(train_df)
 
     train_dataset = ForceDataset(train_df, config, is_train=True)
@@ -32,6 +35,18 @@ def main(config):
     print("========================training done=======================")
 
 
+def energy(config):
+    print("=====================start preprocessing====================")
+    preprocessor = Preprocess(config)
+    print("(1/3) ..load train data..")
+    train_data = preprocessor.load_train_data()
+    print("(2/3) ..xyz data to df..")
+    train_df = preprocessor.data2df(train_data, is_train=True)
+    print("(3/3) ..load train and test df..")
+    train_df, test_df = preprocessor.force_split(train_data)
+    preprocessor.make_sequence()
+
+
 if __name__ == "__main__":
     args = argparse.ArgumentParser(description="samsung")
     args.add_argument(
@@ -47,4 +62,7 @@ if __name__ == "__main__":
     config["task"] = args.task
     config["device"] = "cuda" if torch.cuda.is_available() else "cpu"
     set_seed(config["seed"])
-    main(config)
+    if config["task"] == "force":
+        force(config)
+    elif config["task"] == "energy":
+        energy(config)

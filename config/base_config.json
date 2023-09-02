@@ -1,14 +1,27 @@
 {
     "seed":917,
     "data": {
-        "data_dir": "./data/"
+        "data_dir": "./data"
     },
-    "force":{
-        "input_size": 3,
-        "output_size": 3,
-        "hidden_size": 256,
+    "model": {
+        "force":{
+            "type": "MLP",
+            "input_size": 3,
+            "output_size": 3,
+            "hidden_size": 256,
+            "dropout_rate":0.5
+        }},
+    "trainer": {
         "learning_rate": 0.001,
-        "epochs": 3,
-        "batch": 256
+        "epochs": 1,
+        "batch": 1024,
+        "save_dir": "./result",
+        "save_name": "current_best.pt",
+        "scheduler": true,
+        "lr_scheduler": {
+            "patience": 10,
+            "factor": 0.5,
+            "mode":"min"
+        }
     }
 }

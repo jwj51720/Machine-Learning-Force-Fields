@@ -40,8 +40,8 @@ def main(config):
     print("(3/3) ..postprocessing..")
     test_df["force"] = preds
     submit = preprocessor.infenrence_preprocessing_force(preds)
-    test_df.to_csv(f'{temp_dir}/{config["inference"]["pt_file"]}_energy_test.csv')
-    submit.to_csv(f'{temp_dir}/{config["inference"]["pt_file"]}_submission.csv')
+    test_df.to_csv(f'{temp_dir}/{config["inference"]["pt_file"]}_test.csv')
+    submit.to_csv(f'{temp_dir}/{config["inference"]["pt_file"]}_submit.csv')
     print("========================inference done======================")
 
 

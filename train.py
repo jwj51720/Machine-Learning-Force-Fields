@@ -5,6 +5,8 @@ from dataset.dataset import ForceDataset, get_loader
 from dataset.preprocess import Preprocess
 from models.get_model import get_models
 from trainer.trainer import BaseTrainer
+from datetime import datetime
+import pytz
 
 
 def main(config):
@@ -21,7 +23,12 @@ def main(config):
     print("=======================start training=======================")
     model = get_models(config)
     trainer = BaseTrainer(model, train_loader, valid_loader, config)
-    trainer.training()
+    model = trainer.training()
+    kst_time = datetime.now(pytz.timezone("Asia/Seoul")).strftime("%Y-%m-%d_%H-%M-%S")
+    torch.save(
+        model.state_dict(),
+        f'{trainer.save_dir}/{config["model"]["force"]["type"]}_{kst_time}.pt',
+    )
     print("========================training done=======================")
 
 

@@ -12,13 +12,14 @@ class Preprocess:
         self.sequence_test = []
 
     def load_train_data(self):
-        print("..load train data.. (1/3)")
+        print("(1/3) ..load train data..")
         train = read(
             f"{self.cfg_data['data_dir']}/train.xyz", format="extxyz", index=":"
         )
         return train
 
     def load_test_data(self):
+        print("(1/3) ..load test data..")
         test = read(f"{self.cfg_data['data_dir']}/test.xyz", format="extxyz", index=":")
         return test
 
@@ -27,7 +28,7 @@ class Preprocess:
         return submit
 
     def preprocessing_force(self, data, is_train=True) -> pd.DataFrame:
-        print("..xyz data to df.. (2/3)")
+        print("(2/3) ..xyz data to df..")
         (
             sequence_data,
             positions_x,
@@ -64,7 +65,7 @@ class Preprocess:
         return df
 
     def train_valid_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
-        print("..split train and valid.. (3/3)")
+        print("(3/3) ..split train and valid..")
         x = df.drop(columns=["force"])
         y = df["force"]
         x_train, x_valid, y_train, y_valid = train_test_split(
@@ -76,11 +77,11 @@ class Preprocess:
 
     def infenrence_preprocessing_force(self, preds):
         bundles_test = []
-        train = self.load_train_data()
-        for i in range(len(train)):
-            mole = train[i]
-            atoms = len(mole)
-            self.sequence_train.append(atoms)
+        # train = self.load_train_data()
+        # for i in range(len(train)):
+        #     mole = train[i]
+        #     atoms = len(mole)
+        #     self.sequence_train.append(atoms)
         flag = 0
         for size in self.sequence_test:
             bundles_test.append((flag, flag + size))

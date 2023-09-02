@@ -1,7 +1,9 @@
 {
     "seed":917,
     "data": {
-        "data_dir": "./data"
+        "data_dir": "./data",
+        "temp_dir": "./temp",
+        "save_dir": "./result"
     },
     "model": {
         "force":{
@@ -15,13 +17,15 @@
         "learning_rate": 0.001,
         "epochs": 1,
         "batch": 1024,
-        "save_dir": "./result",
-        "save_name": "current_best.pt",
         "scheduler": true,
         "lr_scheduler": {
             "patience": 10,
             "factor": 0.5,
             "mode":"min"
         }
+    },
+    "inference": {
+        "batch": 1,
+        "pt_file": "MLP_2023-09-02_22-33-11"
     }
 }

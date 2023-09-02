@@ -5,6 +5,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import os
 from tqdm import tqdm
 import torch
+import copy
 
 
 class BaseTrainer:
@@ -35,7 +36,7 @@ class BaseTrainer:
 
         self.epochs = self.cfg_trainer["epochs"]
         self.start_epoch = 1
-        self.save_dir = self.cfg_trainer["save_dir"]
+        self.save_dir = self.config["data"]["save_dir"]
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
         self.min_val_loss = float("inf")
@@ -55,26 +56,30 @@ class BaseTrainer:
                 self.optimizer.step()
 
             val_loss, val_score = self.validation()
-            breakpoint()
             print(
-                f"Train Loss: {loss}, Valid Loss: {val_loss}, Valid Score: {val_score}"
+                f"Train Loss: {loss:.4f}, Valid Loss: {val_loss:.4f}, Valid Score: {val_score:.4f}"
             )
             if val_loss < self.min_val_loss:
                 self.min_val_loss = val_loss
+                best_model = copy.deepcopy(self.model)
                 print("..min valid loss..")
-                print("..model save..")
-                torch.save(self.model.state_dict(), f"{self.save_dir}/current_best.pt")
+                print("..new best_model..")
 
             if self.config["trainer"]["scheduler"]:
                 self.lr_scheduler.step(val_loss)
+
+        return best_model
 
     def validation(self):
         val_loss = 0
         self.model.eval()
         with torch.no_grad():
             for inputs, labels in tqdm(self.valid_loader):
+                inputs = inputs.to(self.config["device"])
+                labels = labels.to(self.config["device"])
                 output = self.model(inputs)
                 loss = self.criterion(output, labels)
                 val_loss += loss.item()
                 val_score = 1
+                breakpoint()
         return (val_loss / len(self.valid_loader), val_score)

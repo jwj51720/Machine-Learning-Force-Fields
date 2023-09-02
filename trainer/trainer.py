@@ -6,6 +6,8 @@ import os
 from tqdm import tqdm
 import torch
 import copy
+import numpy as np
+import math
 
 
 class BaseTrainer:
@@ -40,7 +42,7 @@ class BaseTrainer:
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
         self.min_val_loss = float("inf")
-        self.min_val_EF = float("inf")
+        # self.min_val_EF = float("inf")
 
     def training(self):
         for epoch in range(self.start_epoch, self.epochs + 1):
@@ -72,6 +74,8 @@ class BaseTrainer:
 
     def validation(self):
         val_loss = 0
+        squared_error = 0
+        total_samples = 0
         self.model.eval()
         with torch.no_grad():
             for inputs, labels in tqdm(self.valid_loader):
@@ -80,6 +84,9 @@ class BaseTrainer:
                 output = self.model(inputs)
                 loss = self.criterion(output, labels)
                 val_loss += loss.item()
-                val_score = 1
-                breakpoint()
-        return (val_loss / len(self.valid_loader), val_score)
+                squared_error += torch.sum(torch.square(output - labels)).item()
+                total_samples += inputs.size(0)
+        return (
+            val_loss / len(self.valid_loader),
+            math.sqrt(squared_error / total_samples) * 40,  # EF metric
+        )

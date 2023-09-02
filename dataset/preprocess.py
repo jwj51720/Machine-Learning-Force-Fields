@@ -10,6 +10,8 @@ class Preprocess:
         self.cfg_data = config["data"]
         self.sequence_train = []
         self.sequence_test = []
+        self.train_df = None
+        self.test_df = None
 
     def load_train_data(self):
         train = read(
@@ -110,3 +112,30 @@ class Preprocess:
             bundles_test.append((flag, flag + size))
             flag += size
         return bundles_test
+
+    def force_split(self, train_df):
+        force_df = train_df["force"].apply(pd.Series)
+        force_df.columns = [f"force_{i}" for i in range(3)]
+        self.train_df = train_df.drop("force", axis=1).join(force_df)
+
+        test_df = self.load_temp_test()
+        force_df = test_df["force"].apply(pd.Series)
+        force_df.columns = [f"force_{i}" for i in range(3)]
+        self.test_df = test_df.drop("force", axis=1).join(force_df)
+        return self.train_df, self.test_df
+
+    def load_temp_test(self):
+        file_path = self.cfg_data["temp_dir"]
+        file_name = f'{self.config["model"]["force"]}_{self.config["inference"]["pt_file"]}_test.csv'
+        test = pd.read_csv(f"{file_path}/{file_name}")
+        return test
+
+    def make_sequence(self):
+        bundles_train = self.take_bundles_train()
+        bundles_test = self.take_bundles_test()
+        self.sequences_train = [
+            self.train_df.iloc[start:end].values for start, end in bundles_train
+        ]  # different from the previous one
+        self.sequences_test = [
+            self.test_df.iloc[start:end].values for start, end in bundles_test
+        ]  # different from the previous one

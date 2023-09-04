@@ -22,7 +22,10 @@ class BaseTrainer:
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.config = config
-        self.cfg_trainer = self.config["trainer"]
+        if self.config["task"] == "force":
+            self.cfg_trainer = self.config["force"]["trainer"]
+        elif self.config["task"] == "energy":
+            self.cfg_trainer = self.config["energy"]["trainer"]
 
         self.criterion = nn.MSELoss()
         self.optimizer = optim.Adam(
@@ -38,14 +41,18 @@ class BaseTrainer:
 
         self.epochs = self.cfg_trainer["epochs"]
         self.start_epoch = 1
-        self.save_dir = self.config["data"]["save_dir"]
+        if config["task"] == "force":
+            self.save_dir = self.config["data"]["force_dir"]
+        elif config["task"] == "energy":
+            self.save_dir = self.config["data"]["energy_dir"]
+
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
         self.min_val_loss = float("inf")
-        # self.min_val_EF = float("inf")
 
-    def training(self):
+    def training_force(self):
         for epoch in range(self.start_epoch, self.epochs + 1):
+            total_loss = 0
             print(f"..{epoch} epoch..")
             self.model.train()
             for inputs, labels in tqdm(self.train_loader):
@@ -54,10 +61,39 @@ class BaseTrainer:
                 self.optimizer.zero_grad()
                 output = self.model(inputs)
                 loss = self.criterion(output, labels)
+                total_loss += loss
                 loss.backward()
                 self.optimizer.step()
 
-            val_loss, val_score = self.validation()
+            val_loss, val_score = self.validation_force()
+            print(
+                f"Train Loss: {total_loss/len(self.train_loader):.6f}, Valid Loss: {val_loss:.6f}, Valid Score: {val_score:.6f}"
+            )
+            if val_loss < self.min_val_loss:
+                self.min_val_loss = val_loss
+                best_model = copy.deepcopy(self.model)
+                print("..min valid loss..")
+                print("..new best_model..")
+
+            if self.config["force"]["trainer"]["scheduler"]:
+                self.lr_scheduler.step(val_loss)
+
+        return best_model
+
+    def training_energy(self):
+        for epoch in range(self.start_epoch, self.epochs + 1):
+            print(f"..{epoch} epoch..")
+            self.model.train()
+            for inputs, masks, labels in tqdm(self.train_loader):
+                inputs = inputs.to(self.config["device"])
+                labels = labels.to(self.config["device"])
+                self.optimizer.zero_grad()
+                output = self.model(inputs)
+                loss = self.criterion(output.squeeze(), labels)
+                loss.backward()
+                self.optimizer.step()
+
+            val_loss, val_score = self.validation_energy()
             print(
                 f"Train Loss: {loss:.4f}, Valid Loss: {val_loss:.4f}, Valid Score: {val_score:.4f}"
             )
@@ -67,12 +103,12 @@ class BaseTrainer:
                 print("..min valid loss..")
                 print("..new best_model..")
 
-            if self.config["trainer"]["scheduler"]:
+            if self.config["force"]["trainer"]["scheduler"]:
                 self.lr_scheduler.step(val_loss)
 
         return best_model
 
-    def validation(self):
+    def validation_force(self):
         val_loss = 0
         squared_error = 0
         total_samples = 0
@@ -88,5 +124,28 @@ class BaseTrainer:
                 total_samples += inputs.size(0)
         return (
             val_loss / len(self.valid_loader),
-            math.sqrt(squared_error / total_samples) * 40,  # EF metric
+            math.sqrt(squared_error / total_samples / 3) * 40,  # EF metric
+        )
+
+    def validation_energy(self):
+        val_loss = 0
+        squared_error = 0
+        total_samples = 0
+        self.model.eval()
+        with torch.no_grad():
+            for inputs, masks, labels in tqdm(self.valid_loader):
+                inputs = inputs.to(self.config["device"])
+                masks = masks.to(self.config["device"])
+                labels = labels.to(self.config["device"])
+                output = self.model(inputs)
+                output = output.squeeze()
+                loss = self.criterion(output, labels)
+                val_loss += loss.item()
+                squared_error += torch.sum(
+                    torch.square((output - labels) / torch.sum(masks, dim=1))
+                ).item()
+                total_samples += inputs.size(0)
+        return (
+            val_loss / len(self.valid_loader),
+            math.sqrt(squared_error / total_samples) * 1000,  # EF metric
         )

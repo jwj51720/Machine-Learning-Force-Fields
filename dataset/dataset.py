@@ -1,6 +1,8 @@
 import torch
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+import numpy as np
+import torch.nn.utils.rnn as rnn_utils
 
 
 class ForceDataset(Dataset):
@@ -26,14 +28,38 @@ class ForceDataset(Dataset):
             return inputs
 
 
+class EnergyDataset(Dataset):
+    def __init__(self, data_set, is_train=True):
+        self.is_train = is_train
+        if self.is_train:
+            self.sequences = torch.tensor(data_set[0], dtype=torch.float32)
+            self.mask = torch.tensor(data_set[1], dtype=torch.bool)
+            self.label = torch.tensor(data_set[2], dtype=torch.float32)
+        else:
+            self.sequences = torch.tensor(data_set[0], dtype=torch.float32)
+            self.mask = torch.tensor(data_set[1], dtype=torch.bool)
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        inputs = self.sequences[idx]
+        mask = self.mask[idx]  # return mask for validation
+        if self.is_train:
+            label = self.label[idx]
+            return inputs, mask, label
+        else:
+            return inputs, mask
+
+
 def get_loader(train_data: Dataset, valid_data: Dataset, config: dict) -> DataLoader:
     train_loader = DataLoader(
-        train_data, shuffle=True, batch_size=config["trainer"]["batch"]
+        train_data, shuffle=True, batch_size=config[config["task"]]["trainer"]["batch"]
     )
     valid_loader = DataLoader(
         valid_data,
         shuffle=False,
-        batch_size=config["trainer"]["batch"],
+        batch_size=config[config["task"]]["trainer"]["batch"],
     )
 
     return train_loader, valid_loader

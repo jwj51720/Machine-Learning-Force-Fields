@@ -2,6 +2,7 @@ import pandas as pd
 from ase.io import read
 from sklearn.model_selection import train_test_split
 import numpy as np
+import torch
 
 
 class Preprocess:
@@ -10,8 +11,7 @@ class Preprocess:
         self.cfg_data = config["data"]
         self.sequence_train = []
         self.sequence_test = []
-        self.train_df = None
-        self.test_df = None
+        self.energies = []
 
     def load_train_data(self):
         train = read(
@@ -43,6 +43,9 @@ class Preprocess:
             position = mole.get_positions()  # (n,3)
             force = mole.get_forces()  # label 1, (n,3)
 
+            energy = mole.get_total_energy()  # label 2, (n)
+            self.energies.append(energy)
+
             for j in range(len(mole)):  # jth atom in ith mole
                 positions_x.append(position[j][0])
                 positions_y.append(position[j][1])
@@ -63,7 +66,7 @@ class Preprocess:
         )
         return df
 
-    def train_valid_split(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
+    def train_valid_split_f(self, df: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
         x = df.drop(columns=["force"])
         y = df["force"]
         x_train, x_valid, y_train, y_valid = train_test_split(
@@ -73,6 +76,12 @@ class Preprocess:
         x_valid["force"] = y_valid
         return x_train, x_valid
 
+    def train_valid_split_e(self, sequences, mask, label):
+        (x_train, x_valid, m_train, m_valid, y_train, y_valid) = train_test_split(
+            sequences, mask, label, test_size=0.2, random_state=self.config["seed"]
+        )
+        return [x_train, m_train, y_train], [x_valid, m_valid, y_valid]
+
     def infenrence_preprocessing_force(self, preds):
         bundles_test = self.take_bundles_test()
         preds_force = []
@@ -80,7 +89,8 @@ class Preprocess:
             preds_force.append(np.vstack(preds[start:end]))  # 2차원 array로 저장
 
         sample = self.load_submission_data()
-        sample["force"] = preds_force
+        preds_force_str = [str(arr) for arr in preds_force]
+        sample["force"] = preds_force_str
         return sample
 
     def take_bundles_train(self):
@@ -113,29 +123,63 @@ class Preprocess:
             flag += size
         return bundles_test
 
-    def force_split(self, train_df):
-        force_df = train_df["force"].apply(pd.Series)
-        force_df.columns = [f"force_{i}" for i in range(3)]
-        self.train_df = train_df.drop("force", axis=1).join(force_df)
+    def force_split(self, df, is_train=True):
+        if not is_train:
+            df = self.load_force_test()
+            df["force"] = (
+                df["force"]
+                .apply(lambda x: [float(val) for val in x.strip("[]").split()])
+                .tolist()
+            )
+        force_df = pd.DataFrame(
+            df["force"].values.tolist(), columns=["force_0", "force_1", "force_2"]
+        )
+        df = pd.concat([df.drop("force", axis=1), force_df], axis=1)
+        return df
 
-        test_df = self.load_temp_test()
-        force_df = test_df["force"].apply(pd.Series)
-        force_df.columns = [f"force_{i}" for i in range(3)]
-        self.test_df = test_df.drop("force", axis=1).join(force_df)
-        return self.train_df, self.test_df
-
-    def load_temp_test(self):
-        file_path = self.cfg_data["temp_dir"]
-        file_name = f'{self.config["model"]["force"]}_{self.config["inference"]["pt_file"]}_test.csv'
+    def load_force_test(self):
+        file_path = self.cfg_data["force_dir"]
+        file_name = f'{self.config["force"]["inference"]["file_name"]}_test.csv'  # test csv in force task
         test = pd.read_csv(f"{file_path}/{file_name}")
         return test
 
-    def make_sequence(self):
-        bundles_train = self.take_bundles_train()
-        bundles_test = self.take_bundles_test()
-        self.sequences_train = [
-            self.train_df.iloc[start:end].values for start, end in bundles_train
-        ]  # different from the previous one
-        self.sequences_test = [
-            self.test_df.iloc[start:end].values for start, end in bundles_test
-        ]  # different from the previous one
+    def load_force_submit(self):
+        file_path = self.cfg_data["force_dir"]
+        file_name = f'{self.config["force"]["inference"]["file_name"]}_submit.csv'  # sumbit csv in force task
+        submit = pd.read_csv(f"{file_path}/{file_name}")
+        return submit
+
+    def make_sequence(self, df, is_train=True):
+        if is_train:
+            bundles = self.take_bundles_train()
+            self.sequences_train = [
+                df.iloc[start:end].values for start, end in bundles
+            ]  # different from the previous one
+        else:
+            bundles = self.take_bundles_test()
+            self.sequences_test = [
+                df.iloc[start:end].values for start, end in bundles
+            ]  # different from the previous one
+
+    def make_padding(self, is_train=True):
+        input_size = self.config["energy"]["model"]["input_size"]
+        if is_train:
+            sequences = self.sequences_train
+        else:
+            sequences = self.sequences_test
+        max_len = max(seq.shape[0] for seq in sequences)
+        padded_sequences = [
+            np.vstack(
+                [
+                    seq,
+                    np.zeros((max_len - seq.shape[0], input_size)),
+                ]
+            )
+            for seq in sequences
+        ]
+        padded_array = np.stack(padded_sequences)
+        mask = (padded_array != 0).all(axis=2)
+        if is_train:
+            return padded_array, mask, self.energies
+        else:
+            return padded_array, mask

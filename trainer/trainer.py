@@ -84,11 +84,15 @@ class BaseTrainer:
             if self.config["force"]["trainer"]["scheduler"]:
                 self.lr_scheduler.step(val_loss)
 
+            if epoch % 10 == 0:
+                torch.save(best_model.state_dict(), "../current_best.pt")
+
         return best_model
 
     def training_energy(self):
         es_count = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
+            total_loss = 0
             print(f"..{epoch} epoch..")
             self.model.train()
             for inputs, masks, labels in tqdm(self.train_loader):
@@ -97,12 +101,13 @@ class BaseTrainer:
                 self.optimizer.zero_grad()
                 output = self.model(inputs)
                 loss = self.criterion(output.squeeze(), labels)
+                total_loss += loss
                 loss.backward()
                 self.optimizer.step()
 
             val_loss, val_score = self.validation_energy()
             print(
-                f"Train Loss: {loss:.4f}, Valid Loss: {val_loss:.4f}, Valid Score: {val_score:.4f}"
+                f"Train Loss: {total_loss/len(self.train_loader):.6f}, Valid Loss: {val_loss:.6f}, Valid Score: {val_score:.6f}"
             )
             es_count += 1
             if val_loss < self.min_val_loss:
@@ -117,6 +122,9 @@ class BaseTrainer:
 
             if self.config["force"]["trainer"]["scheduler"]:
                 self.lr_scheduler.step(val_loss)
+
+            if epoch % 10 == 0:
+                torch.save(best_model.state_dict(), "../current_best.pt")
 
         return best_model
 

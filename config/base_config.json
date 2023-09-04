@@ -18,6 +18,7 @@
             "epochs": 10,
             "batch": 512,
             "scheduler": true,
+            "early_stopping":10,
             "lr_scheduler": {
                 "patience": 10,
                 "factor": 0.5,
@@ -43,6 +44,7 @@
             "epochs": 1,
             "batch": 64,
             "scheduler": true,
+            "early_stopping":10,
             "lr_scheduler": {
                 "patience": 10,
                 "factor": 0.5,

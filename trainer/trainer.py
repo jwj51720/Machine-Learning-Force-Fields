@@ -51,6 +51,7 @@ class BaseTrainer:
         self.min_val_loss = float("inf")
 
     def training_force(self):
+        es_count = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
             total_loss = 0
             print(f"..{epoch} epoch..")
@@ -69,11 +70,16 @@ class BaseTrainer:
             print(
                 f"Train Loss: {total_loss/len(self.train_loader):.6f}, Valid Loss: {val_loss:.6f}, Valid Score: {val_score:.6f}"
             )
+            es_count += 1
             if val_loss < self.min_val_loss:
+                es_count = 0
                 self.min_val_loss = val_loss
                 best_model = copy.deepcopy(self.model)
                 print("..min valid loss..")
                 print("..new best_model..")
+
+            if es_count == self.config["force"]["trainer"]["early_stopping"]:
+                return best_model
 
             if self.config["force"]["trainer"]["scheduler"]:
                 self.lr_scheduler.step(val_loss)
@@ -81,6 +87,7 @@ class BaseTrainer:
         return best_model
 
     def training_energy(self):
+        es_count = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
             print(f"..{epoch} epoch..")
             self.model.train()
@@ -97,11 +104,16 @@ class BaseTrainer:
             print(
                 f"Train Loss: {loss:.4f}, Valid Loss: {val_loss:.4f}, Valid Score: {val_score:.4f}"
             )
+            es_count += 1
             if val_loss < self.min_val_loss:
+                es_count = 0
                 self.min_val_loss = val_loss
                 best_model = copy.deepcopy(self.model)
                 print("..min valid loss..")
                 print("..new best_model..")
+
+            if es_count == self.config["force"]["trainer"]["early_stopping"]:
+                return best_model
 
             if self.config["force"]["trainer"]["scheduler"]:
                 self.lr_scheduler.step(val_loss)

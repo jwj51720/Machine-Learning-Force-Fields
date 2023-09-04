@@ -10,12 +10,12 @@
             "type": "MLP",
             "input_size": 3,
             "output_size": 3,
-            "hidden_size": 256,
+            "hidden_size": 128,
             "dropout_rate":0.5
         },
         "trainer": {
-            "learning_rate": 0.000001,
-            "epochs": 10,
+            "learning_rate": 0.001,
+            "epochs": 150,
             "batch": 512,
             "scheduler": true,
             "early_stopping":10,
@@ -27,7 +27,7 @@
         },
         "inference": {
             "batch": 1,
-            "file_name": "MLP_2023-09-04_00-08-28"
+            "file_name": "MLP_2023-09-04_13-53-50"
         }
     },
     "energy": {
@@ -41,7 +41,7 @@
         },
         "trainer": {
             "learning_rate": 0.001,
-            "epochs": 1,
+            "epochs": 150,
             "batch": 64,
             "scheduler": true,
             "early_stopping":10,
@@ -52,8 +52,8 @@
             }
         },
         "inference": {
-            "batch": 64,
-            "file_name":"BiLSTM_2023-09-04_00-29-32"
+            "batch": 1,
+            "file_name":"BiLSTM_2023-09-04_15-41-08"
         }
     }
 }

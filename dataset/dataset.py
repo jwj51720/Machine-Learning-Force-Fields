@@ -19,10 +19,17 @@ class ForceDataset(Dataset):
         pos_y = self.df.iloc[idx, 1]  # position_y
         pos_z = self.df.iloc[idx, 2]  # position_z
 
-        inputs = torch.tensor([pos_x, pos_y, pos_z], dtype=torch.float32)
+        vol = self.df.iloc[idx, 3]  # volume
+        n = self.df.iloc[idx, 4]  # Ns
+        si = self.df.iloc[idx, 5]  # Sis
+        mass = self.df.iloc[idx, 6]  # masses
+
+        inputs = torch.tensor(
+            [pos_x, pos_y, pos_z, vol, n, si, mass], dtype=torch.float32
+        )
 
         if self.is_train:
-            label = torch.tensor(self.df.iloc[idx, 3], dtype=torch.float32)
+            label = torch.tensor(self.df.iloc[idx, 7], dtype=torch.float32)
             return inputs, label
         else:
             return inputs

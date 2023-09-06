@@ -8,9 +8,9 @@
     "force" : {
         "model": {    
             "type": "MLP",
-            "input_size": 3,
+            "input_size": 7,
             "output_size": 3,
-            "hidden_size": 128,
+            "hidden_size": 256,
             "dropout_rate":0.5
         },
         "trainer": {
@@ -18,10 +18,11 @@
             "epochs": 150,
             "batch": 512,
             "scheduler": true,
-            "early_stopping":10,
+            "early_stopping":20,
             "lr_scheduler": {
-                "patience": 10,
+                "patience": 5,
                 "factor": 0.5,
+                "threshold": 0.000001,
                 "mode":"min"
             }
         },
@@ -44,9 +45,9 @@
             "epochs": 150,
             "batch": 64,
             "scheduler": true,
-            "early_stopping":10,
+            "early_stopping":20,
             "lr_scheduler": {
-                "patience": 10,
+                "patience": 5,
                 "factor": 0.5,
                 "mode":"min"
             }

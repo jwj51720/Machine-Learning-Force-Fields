@@ -3,6 +3,7 @@ from ase.io import read
 from sklearn.model_selection import train_test_split
 import numpy as np
 import torch
+from collections import Counter
 
 
 class Preprocess:
@@ -35,6 +36,10 @@ class Preprocess:
             positions_z,
             forces,
         ) = ([], [], [], [], [])
+        volumes = []
+        masses = []
+        Ns = []
+        Sis = []
         for i in range(len(data)):
             mole = data[i]
             atoms = len(mole)
@@ -42,6 +47,10 @@ class Preprocess:
 
             position = mole.get_positions()  # (n,3)
             force = mole.get_forces()  # label 1, (n,3)
+            volume = mole.get_volume()
+            mass = mole.get_masses()
+            symbol = mole.get_chemical_symbols()
+            element_counts = Counter(symbol)
 
             energy = mole.get_total_energy()  # label 2, (n)
             self.energies.append(energy)
@@ -51,6 +60,10 @@ class Preprocess:
                 positions_y.append(position[j][1])
                 positions_z.append(position[j][2])
                 forces.append(force[j])
+                volumes.append(volume)
+                masses.append(mass[j])
+                Ns.append(element_counts["N"])
+                Sis.append(element_counts["Si"])
         if is_train:
             self.sequence_train = sequence_data
         else:
@@ -61,6 +74,10 @@ class Preprocess:
                 "position_x": positions_x,
                 "position_y": positions_y,
                 "position_z": positions_z,
+                "volume": volumes,
+                "N": Ns,
+                "Si": Sis,
+                "mass": masses,
                 "force": forces,
             }
         )
